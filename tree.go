@@ -1,12 +1,16 @@
+// +build wasm
+
 package vdom
 
 import (
+	"bytes"
 	"errors"
-	"strings"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
+
+type Trees []Tree
 
 type Tree struct {
 	Node     *html.Node
@@ -15,12 +19,21 @@ type Tree struct {
 	Path []int
 }
 
-func NewTree(src string) (Tree, error) {
-	root, err := parse(src)
+func NewTrees(src []byte) (Trees, error) {
+	roots, err := parse(src)
 	if err != nil {
-		return Tree{}, errors.New("vdom.NewTree: " + err.Error())
+		return nil, errors.New("vdom.NewTree: " + err.Error())
 	}
 
+	trees := make(Trees, len(roots))
+	for i := range roots {
+		trees[i] = NewTree(roots[i], i)
+	}
+
+	return trees, nil
+}
+
+func NewTree(root *html.Node, topIndex int) Tree {
 	var f func(*html.Node, []int) Tree
 	f = func(node *html.Node, path []int) Tree {
 		var children []Tree
@@ -31,17 +44,18 @@ func NewTree(src string) (Tree, error) {
 		}
 		return Tree{Node: node, Children: children, Path: path}
 	}
-	return f(root, nil), nil
+	return f(root, []int{topIndex})
 }
 
+// addToPath creates a new copy of the path slice with i added to the end.
 func addToPath(path []int, i int) []int {
 	new := make([]int, len(path)+1)
 	new[copy(new, path)] = i
 	return new
 }
 
-func parse(src string) (*html.Node, error) {
-	roots, err := html.ParseFragment(strings.NewReader(src), &html.Node{
+func parse(src []byte) ([]*html.Node, error) {
+	roots, err := html.ParseFragment(bytes.NewReader(bytes.TrimSpace(src)), &html.Node{
 		Type:     html.ElementNode,
 		Data:     "body",
 		DataAtom: atom.Body,
@@ -49,8 +63,5 @@ func parse(src string) (*html.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(roots) != 1 {
-		return nil, errors.New("expected only one root")
-	}
-	return roots[0], nil
+	return roots, nil
 }

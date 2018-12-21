@@ -1,3 +1,5 @@
+// +build wasm
+
 package vdom_test
 
 import (
@@ -12,16 +14,16 @@ import (
 
 func TestDiff(t *testing.T) {
 	t.Run("NoPatches", func(t *testing.T) {
-		old := newTree(t, `<div><span>Hello</span><span>World</span></div>`)
-		new := newTree(t, `<div><span>Hello</span><span>World</span></div>`)
+		old := newTrees(t, `<div><span>Hello</span><span>World</span></div>`)
+		new := newTrees(t, `<div><span>Hello</span><span>World</span></div>`)
 		if vdom.Diff(old, new) != nil {
 			t.Error("expected no patches")
 		}
 	})
 
 	t.Run("ReplaceInnerText", func(t *testing.T) {
-		old := newTree(t, `<div><span>Hello</span><span>World</span></div>`)
-		new := newTree(t, `<div><span>Hello</span><span>Universe</span></div>`)
+		old := newTrees(t, `<div><span>Hello</span><span>World</span></div>`)
+		new := newTrees(t, `<div><span>Hello</span><span>Universe</span></div>`)
 		patches := vdom.Diff(old, new)
 		if len(patches) != 1 {
 			t.Fatal("expected one patch")
@@ -30,7 +32,7 @@ func TestDiff(t *testing.T) {
 		if !ok {
 			t.Fatal("expected Replace patch")
 		}
-		if !reflect.DeepEqual(replace.Path, []int{1, 0}) {
+		if !reflect.DeepEqual(replace.Path, []int{0, 1, 0}) {
 			t.Fatalf("unexpected path: %v", replace.Path)
 		}
 		if replace.Node.Type != html.TextNode {
@@ -42,8 +44,8 @@ func TestDiff(t *testing.T) {
 	})
 
 	t.Run("ReplaceNode", func(t *testing.T) {
-		old := newTree(t, `<div><span>Hello</span><span>World</span></div>`)
-		new := newTree(t, `<div><strong>Hello</strong><span>World</span></div>`)
+		old := newTrees(t, `<div><span>Hello</span><span>World</span></div>`)
+		new := newTrees(t, `<div><strong>Hello</strong><span>World</span></div>`)
 		patches := vdom.Diff(old, new)
 		if len(patches) != 1 {
 			t.Fatal("expected one patch")
@@ -52,7 +54,7 @@ func TestDiff(t *testing.T) {
 		if !ok {
 			t.Fatal("expected Replace patch")
 		}
-		if !reflect.DeepEqual(replace.Path, []int{0}) {
+		if !reflect.DeepEqual(replace.Path, []int{0, 0}) {
 			t.Fatalf("unexpected path: %v", replace.Path)
 		}
 		if replace.Node.Type != html.ElementNode {
@@ -64,8 +66,8 @@ func TestDiff(t *testing.T) {
 	})
 
 	t.Run("AddNewSpan", func(t *testing.T) {
-		old := newTree(t, `<div><span>Hello</span><span>World</span></div>`)
-		new := newTree(t, `<div><span>Hello</span><span>World</span><span>!</span></div>`)
+		old := newTrees(t, `<div><span>Hello</span><span>World</span></div>`)
+		new := newTrees(t, `<div><span>Hello</span><span>World</span><span>!</span></div>`)
 		patches := vdom.Diff(old, new)
 		if len(patches) != 1 {
 			t.Fatal("expected one patch")
@@ -74,7 +76,7 @@ func TestDiff(t *testing.T) {
 		if !ok {
 			t.Fatal("expected Append patch")
 		}
-		if patch.Path != nil {
+		if !reflect.DeepEqual(patch.Path, []int{0}) {
 			t.Fatalf("unexpected path: %v", patch.Path)
 		}
 		if patch.Node.Type != html.ElementNode || patch.Node.DataAtom != atom.Span {
@@ -86,8 +88,8 @@ func TestDiff(t *testing.T) {
 	})
 
 	t.Run("DeleteSpan", func(t *testing.T) {
-		old := newTree(t, `<div><span>Hello</span><span>World</span></div>`)
-		new := newTree(t, `<div><span>Hello</span></div>`)
+		old := newTrees(t, `<div><span>Hello</span><span>World</span></div>`)
+		new := newTrees(t, `<div><span>Hello</span></div>`)
 		patches := vdom.Diff(old, new)
 		if len(patches) != 1 {
 			t.Fatal("expected one patch")
@@ -96,7 +98,7 @@ func TestDiff(t *testing.T) {
 		if !ok {
 			t.Fatal("expected Append patch")
 		}
-		if !reflect.DeepEqual(patch.Path, []int{1}) {
+		if !reflect.DeepEqual(patch.Path, []int{0, 1}) {
 			t.Fatalf("unexpected path: %v", patch.Path)
 		}
 		if patch.Node.Type != html.ElementNode || patch.Node.DataAtom != atom.Span {
@@ -108,8 +110,8 @@ func TestDiff(t *testing.T) {
 	})
 
 	t.Run("AddAttribute", func(t *testing.T) {
-		old := newTree(t, `<div><span>Hello</span><span>World</span></div>`)
-		new := newTree(t, `<div><span class="hello">Hello</span><span>World</span></div>`)
+		old := newTrees(t, `<div><span>Hello</span><span>World</span></div>`)
+		new := newTrees(t, `<div><span class="hello">Hello</span><span>World</span></div>`)
 		patches := vdom.Diff(old, new)
 		if len(patches) != 1 {
 			t.Fatal("expected one patch")
@@ -118,7 +120,7 @@ func TestDiff(t *testing.T) {
 		if !ok {
 			t.Fatal("expected AddAttribute patch")
 		}
-		if !reflect.DeepEqual(patch.Path, []int{0}) {
+		if !reflect.DeepEqual(patch.Path, []int{0, 0}) {
 			t.Fatalf("unexpected path: %v", patch.Path)
 		}
 		if patch.Key != "class" || patch.Value != "hello" {
@@ -127,8 +129,8 @@ func TestDiff(t *testing.T) {
 	})
 
 	t.Run("ModifyAttribute", func(t *testing.T) {
-		old := newTree(t, `<div><span class="hola">Hello</span><span>World</span></div>`)
-		new := newTree(t, `<div><span class="hello">Hello</span><span>World</span></div>`)
+		old := newTrees(t, `<div><span class="hola">Hello</span><span>World</span></div>`)
+		new := newTrees(t, `<div><span class="hello">Hello</span><span>World</span></div>`)
 		patches := vdom.Diff(old, new)
 		if len(patches) != 1 {
 			t.Fatal("expected one patch")
@@ -137,7 +139,7 @@ func TestDiff(t *testing.T) {
 		if !ok {
 			t.Fatal("expected ModifyAttribute patch")
 		}
-		if !reflect.DeepEqual(patch.Path, []int{0}) {
+		if !reflect.DeepEqual(patch.Path, []int{0, 0}) {
 			t.Fatalf("unexpected path: %v", patch.Path)
 		}
 		if patch.Key != "class" || patch.Value != "hello" {
@@ -146,8 +148,8 @@ func TestDiff(t *testing.T) {
 	})
 
 	t.Run("DeleteAttribute", func(t *testing.T) {
-		old := newTree(t, `<div><span class="hola">Hello</span><span>World</span></div>`)
-		new := newTree(t, `<div><span>Hello</span><span>World</span></div>`)
+		old := newTrees(t, `<div><span class="hola">Hello</span><span>World</span></div>`)
+		new := newTrees(t, `<div><span>Hello</span><span>World</span></div>`)
 		patches := vdom.Diff(old, new)
 		if len(patches) != 1 {
 			t.Fatal("expected one patch")
@@ -156,7 +158,7 @@ func TestDiff(t *testing.T) {
 		if !ok {
 			t.Fatal("expected DeleteAttribute patch")
 		}
-		if !reflect.DeepEqual(patch.Path, []int{0}) {
+		if !reflect.DeepEqual(patch.Path, []int{0, 0}) {
 			t.Fatalf("unexpected path: %v", patch.Path)
 		}
 		if patch.Key != "class" {
@@ -165,11 +167,11 @@ func TestDiff(t *testing.T) {
 	})
 }
 
-func newTree(t *testing.T, src string) vdom.Tree {
+func newTrees(t *testing.T, src string) vdom.Trees {
 	t.Helper()
-	tree, err := vdom.NewTree(src)
+	trees, err := vdom.NewTrees([]byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return tree
+	return trees
 }

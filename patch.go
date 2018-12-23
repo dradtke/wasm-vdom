@@ -5,7 +5,6 @@ package vdom
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"syscall/js"
 
 	"golang.org/x/net/html"
@@ -38,7 +37,6 @@ type Replace struct {
 }
 
 func (r Replace) Patch(root js.Value) error {
-	fmt.Printf("applying Replace %v %s\n", r.Path, r.Node.Data)
 	newNode, err := createNodeValue(r.Node)
 	if err != nil {
 		return err
@@ -54,17 +52,12 @@ type Append struct {
 }
 
 func (a Append) Patch(root js.Value) error {
-	fmt.Printf("applying Append %v %s\n", a.Path, a.Node.Data)
 	newNode, err := createNodeValue(a.Node)
 	if err != nil {
 		return err
 	}
-	parent, target := traverse(root, a.Path)
-	if parent == js.Null() {
-		root.Call("appendChild", newNode)
-	} else {
-		parent.Call("insertBefore", newNode, target.Get("nextSibling"))
-	}
+	_, target := traverse(root, a.Path)
+	target.Call("appendChild", newNode)
 	return nil
 }
 
@@ -105,16 +98,10 @@ func (d DeleteAttribute) Patch(root js.Value) error {
 }
 
 func traverse(start js.Value, path []int) (parent, target js.Value) {
-	// If the very first child node is a text element, increment the first
-	// path value in order to skip over it.
-	if len(path) > 0 && start.Get("childNodes").Index(0).Get("nodeType").Int() == 3 {
-		path[0]++
-	}
-
 	parent, target = js.Null(), start
 	for _, i := range path {
 		parent = target
-		target = target.Get("childNodes").Index(i)
+		target = target.Get("children").Index(i)
 	}
 	return parent, target
 }

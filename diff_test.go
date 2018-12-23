@@ -87,6 +87,62 @@ func TestDiff(t *testing.T) {
 		}
 	})
 
+	t.Run("AddListItem", func(t *testing.T) {
+		old := newTrees(t, `
+		<p>To-Do List:</p>
+		<ul>
+		  
+		    <li>a</li>
+		  
+		</ul>
+		<br>
+		<p>
+		  <input type="text" id="newItem">&nbsp;<button type="button" onclick="addNewItem()">Add</button>
+		</p>
+		`)
+		new := newTrees(t, `
+		<p>To-Do List:</p>
+		<ul>
+		  
+		    <li>a</li>
+		  
+		    <li>b</li>
+		  
+		</ul>
+		<br>
+		<p>
+		  <input type="text" id="newItem">&nbsp;<button type="button" onclick="addNewItem()">Add</button>
+		</p>
+		`)
+		patches := vdom.Diff(old, new)
+		if len(patches) != 1 {
+			for _, patch := range patches {
+				switch p := patch.(type) {
+				case vdom.Append:
+					t.Logf("%T %v %s", p, p.Path, p.Node.Data)
+				case vdom.Replace:
+					t.Logf("%T %v %s", p, p.Path, p.Node.Data)
+				}
+			}
+			t.Fatal("expected one patch")
+		}
+		patch, ok := patches[0].(vdom.Append)
+		if !ok {
+			t.Fatal("expected Append patch")
+		}
+		if !reflect.DeepEqual(patch.Path, []int{1}) {
+			t.Fatalf("unexpected path: %v", patch.Path)
+		}
+		/*
+			if patch.Node.Type != html.ElementNode || patch.Node.DataAtom != atom.Span {
+				t.Fatal("unexpected node type")
+			}
+			if patch.Node.FirstChild.Type != html.TextNode || patch.Node.FirstChild.Data != "!" {
+				t.Fatal("unexpected node contents")
+			}
+		*/
+	})
+
 	t.Run("DeleteSpan", func(t *testing.T) {
 		old := newTrees(t, `<div><span>Hello</span><span>World</span></div>`)
 		new := newTrees(t, `<div><span>Hello</span></div>`)

@@ -37,7 +37,6 @@ func render() {
 	if err := t.Execute(&buf, state); err != nil {
 		panic(err)
 	}
-	// println(strings.TrimSpace(buf.String()))
 	newTrees, err := vdom.NewTrees(buf.Bytes())
 	if err != nil {
 		panic("error parsing new tree: " + err.Error())

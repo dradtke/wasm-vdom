@@ -25,9 +25,13 @@ func NewTrees(src []byte) (Trees, error) {
 		return nil, errors.New("vdom.NewTree: " + err.Error())
 	}
 
-	trees := make(Trees, len(roots))
-	for i := range roots {
-		trees[i] = NewTree(roots[i], i)
+	trees := make(Trees, 0, len(roots))
+	var i int
+	for _, root := range roots {
+		if root.Type == html.ElementNode {
+			trees = append(trees, NewTree(root, i))
+			i++
+		}
 	}
 
 	return trees, nil
@@ -39,8 +43,10 @@ func NewTree(root *html.Node, topIndex int) Tree {
 		var children []Tree
 		var i int
 		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			children = append(children, f(child, addToPath(path, i)))
-			i++
+			if child.Type == html.ElementNode {
+				children = append(children, f(child, addToPath(path, i)))
+				i++
+			}
 		}
 		return Tree{Node: node, Children: children, Path: path}
 	}

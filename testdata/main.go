@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
+	"io/ioutil"
+	"net/http"
 	"syscall/js"
 
 	"wasm-vdom"
@@ -16,20 +19,7 @@ var (
 	body  = js.Global().Get("document").Call("querySelector", "body")
 	trees vdom.Trees
 	state = State{}
-	t     = template.Must(template.New("").Parse(`
-		<p>To-Do List:</p>
-		<ul>
-		  {{range .Items}}
-		    <li>{{.}}</li>
-		  {{else}}
-		    <em>Nothing here yet.</em>
-		  {{end}}
-		</ul>
-		<br>
-		<p>
-		  <input type="text" id="newItem">&nbsp;<button type="button" onclick="addNewItem()">Add</button>
-		</p>
-	`))
+	t     *template.Template
 )
 
 func render() {
@@ -41,13 +31,7 @@ func render() {
 	if err != nil {
 		panic("error parsing new tree: " + err.Error())
 	}
-	/*
-		for _, tree := range newTrees {
-			fmt.Printf("%v %v: %s\n", tree.Path, tree.Node.Type, tree.Node.Data)
-		}
-	*/
-	patches := vdom.Diff(trees, newTrees)
-	for _, patch := range patches {
+	for _, patch := range vdom.Diff(trees, newTrees) {
 		if err := patch.Patch(body); err != nil {
 			panic("error applying patch: " + err.Error())
 		}
@@ -63,8 +47,43 @@ func addNewItem(args []js.Value) {
 	render()
 }
 
+func deleteItem(args []js.Value) {
+	i := args[0].Int()
+	state.Items = append(state.Items[:i], state.Items[i+1:]...)
+	fmt.Printf("items = %v\n", state.Items)
+	render()
+}
+
+func loadTemplate() *template.Template {
+	resp, err := http.Get("http://localhost:8080/index.tmpl")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	return template.Must(template.New("").Parse(string(data)))
+}
+
+func registerGlobals() {
+	for _, f := range []struct {
+		name string
+		impl func([]js.Value)
+	}{
+		// Add callbacks here.
+		{name: "addNewItem", impl: addNewItem},
+		{name: "deleteItem", impl: deleteItem},
+	} {
+		js.Global().Set(f.name, js.NewCallback(f.impl))
+	}
+}
+
 func main() {
-	js.Global().Set("addNewItem", js.NewCallback(addNewItem))
+	registerGlobals()
+	t = loadTemplate()
+
 	render()
 
 	select {}

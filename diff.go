@@ -102,5 +102,21 @@ func areDifferentNodes(n1, n2 *html.Node) bool {
 	if n1 == nil || n2 == nil {
 		return true
 	}
-	return n1.Type != n2.Type || n1.DataAtom != n2.DataAtom || n1.Data != n2.Data
+	if n1.Type != n2.Type {
+		return true
+	}
+	if n1.DataAtom != n2.DataAtom {
+		return true
+	}
+	if n1.Data != n2.Data {
+		return true
+	}
+	n1, n2 = n1.FirstChild, n2.FirstChild
+	for n1 != nil && n2 != nil {
+		if areDifferentNodes(n1, n2) {
+			return true
+		}
+		n1, n2 = n1.NextSibling, n2.NextSibling
+	}
+	return false
 }

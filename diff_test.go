@@ -135,7 +135,7 @@ func TestDiff(t *testing.T) {
 		}
 		/*
 			if patch.Node.Type != html.ElementNode || patch.Node.DataAtom != atom.Span {
-				t.Fatal("unexpected node type")
+				t.Fatalf("unexpected node type: %v", patch.Node.Type)
 			}
 			if patch.Node.FirstChild.Type != html.TextNode || patch.Node.FirstChild.Data != "!" {
 				t.Fatal("unexpected node contents")

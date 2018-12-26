@@ -1,0 +1,12 @@
+<p>To-Do List:</p>
+<ul>
+  {{range $i, $el := .Items}}
+    <li>{{$el}} (<a href="#" onclick="deleteItem({{$i}});return false;">delete</a>)</li>
+  {{else}}
+    <em>Nothing here yet.</em>
+  {{end}}
+</ul>
+<br>
+<p>
+  <input type="text" id="newItem">&nbsp;<button type="button" onclick="addNewItem()">Add</button>
+</p>

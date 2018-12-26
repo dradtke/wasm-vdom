@@ -67,7 +67,13 @@ type Remove struct {
 }
 
 func (r Remove) Patch(root js.Value) error {
-	return errors.New("remove not implemented")
+	// TODO: test this, it has not been verified
+	parent, target := traverse(root, r.Path)
+	if parent == js.Null() {
+		parent = root
+	}
+	parent.Call("removeChild", target)
+	return nil
 }
 
 type AddAttribute struct {
